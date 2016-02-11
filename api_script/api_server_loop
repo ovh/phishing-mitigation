@@ -1,0 +1,35 @@
+#!/bin/bash
+
+SERVER_PORT=${1:-"443"}
+LOG_DIR=${2:-"/var/log/tilera-phishing"}
+LOG_FILE="$LOG_DIR/api_server_loop.log"
+SERVER_DIR=${3:-"/usr/local/bin/tilera-phishing-api"}
+SERVER_EXE="$SERVER_DIR/api_server.py"
+
+
+test -d $LOG_DIR || mkdir -p $LOG_DIR || exit 1
+
+
+#echo $SERVER_PORT
+
+echo ""
+echo "=========================================="
+echo "Loop started"
+echo "=========================================="
+echo ""
+
+while [ 1 ]
+do 
+echo ""
+echo "=========================================="
+echo "Starting tilera-phishing python API server"
+echo "=========================================="
+echo ""
+
+$SERVER_EXE -p $SERVER_PORT
+
+echo "Server crashed at $(date)"
+echo "Sleeping 10 seconds..."
+sleep 10
+#break
+done

@@ -1,0 +1,93 @@
+#!/bin/bash
+#
+# chkconfig: 35 90 12
+# description: Foo server
+#
+# Get function from functions library
+. /etc/init.d/functions
+
+RETVAL=0
+BIN=/usr/local/bin/tilera-phishing
+LOCK_FILE=/var/lock/subsys/tilera-phishing
+RELOAD_SH=/usr/local/bin/tilera-phishing-reload.sh
+
+# Start the service 
+start() {
+        echo -n "Starting TILERA-PHISHING : "
+        if [ -e $LOCK_FILE ]; then
+          echo -n " already running."
+          failure
+          RETVAL=1
+        else
+          $BIN --daemon --conf /etc/tilera-phishing/main.conf --ip-conf /etc/tilera-phishing/ip.conf && success || failure
+          RETVAL=$?
+        fi
+        echo
+        ### Create the lock file ###
+        [ $RETVAL = 0 ] && touch $LOCK_FILE
+}
+# Restart the service 
+stop() {
+        echo -n "Stopping TILERA-PHISHING : "
+        if [ ! -e $LOCK_FILE ]; then
+          echo -n " not running ? "
+        fi
+        if [ -n "`pidof tilera-phishing`" ] ; then
+          mpipe-link -d xgbe1
+          mpipe-link -d xgbe2
+          mpipe-link -d xgbe3
+          mpipe-link -d xgbe4
+          killproc tilera-phishing && success
+        else
+          failure $"Stopping tilera-phishing"
+        fi
+        RETVAL=$?
+        ### Now, delete the lock file ###
+        [ $RETVAL = 0 ] && rm -f $LOCK_FILE
+        echo
+}
+#TODO reload() is dirty, it should be done with a pid file in /var/run to target only the right process...
+# We don't want to receive USR1, since reload() below will also send it to this script
+trap '' USR1
+# Reload conf file
+reload() {
+        echo -n "reloading ..."
+        #killall -s USR1 tilera-phishing && success || failure
+        $RELOAD_SH $1 && success || failure
+        RETVAL=$?
+        echo "reloaded"
+}
+# clean lock file
+clean_lock() {
+        echo -n "cleaning lock file ..."
+        $RELOAD_SH clean && success || failure
+        RETVAL=$?
+        echo
+}
+### main logic ###
+case "$1" in
+  start)
+        start
+        ;;
+  stop)
+        stop
+        ;;
+  restart)
+        stop
+        start
+        ;;
+  clean)
+        stop
+        clean_lock
+        ;;
+  status)
+        status tilera-phishing
+        ;;
+  reload)
+        reload
+        ;;
+  *)
+        echo $"Usage: $0 {start|stop|restart|reload|status}"
+        exit 1
+esac
+exit $RETVAL
